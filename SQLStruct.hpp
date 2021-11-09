@@ -18,11 +18,11 @@ using namespace std::literals;
 struct void_t{};
 
 namespace impl{
-template <auto f>
+template <auto check_lambda>
 struct is_specialization_of {
 private:
     template <class T>
-    static auto get_val(int) -> std::is_same<T, decltype(f.template operator()<T>())>;
+    static auto get_val(int) -> std::is_same<T, decltype(check_lambda.template operator()<T>())>;
 
     template <class T>
     static auto get_val(...) -> std::false_type;
