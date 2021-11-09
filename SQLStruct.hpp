@@ -22,14 +22,14 @@ template <auto f>
 struct is_specialization_of {
 private:
     template <class T>
-    static auto value_impl(int) -> std::is_same<T, decltype(f.template operator()<T>())>;
+    static auto get_val(int) -> std::is_same<T, decltype(f.template operator()<T>())>;
 
     template <class T>
-    static auto value_impl(...) -> std::false_type;
+    static auto get_val(...) -> std::false_type;
 
 public:
     template <class T>
-    static constexpr bool value = decltype(value_impl<T>(0))::value;
+    static constexpr bool value = decltype(get_val<T>(0))::value;
 };
 }
 
