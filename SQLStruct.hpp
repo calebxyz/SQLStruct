@@ -19,24 +19,18 @@ using namespace std::literals;
 
 struct empty{};
 
-namespace impl{
-template <auto check_lambda>
-struct is_specialization_of {
-private:
-    template <class T>
-    static auto get_val(int) -> std::is_same<T, decltype(check_lambda.template operator()<T>())>;
-
-    template <class T>
-    static auto get_val(...) -> std::false_type;
-
-public:
-    template <class T>
-    static constexpr bool value = decltype(get_val<T>(0))::value;
+template <typename Specialization, template <typename...> typename Basetype>
+concept specialization_of_types_only = requires (Specialization s) { 
+    []()-> decltype(Basetype(s)) {}.operator()();
 };
+
+
+#define create_specialization_concept(Name, Basetype)                          \
+template <typename Specialization>                                             \
+concept specialization_##Name = requires (Specialization s){                   \
+    []()-> decltype(Basetype(s)) {}.operator()();                              \
 }
 
-#define is_specialization_of(TemplateType) \
-    impl::is_specialization_of<[]<class T>() -> decltype(TemplateType(std::declval<T>())) { }>::template value
 
 template <std::size_t Size>
 struct fixed_string {
@@ -119,6 +113,8 @@ struct alignas(alignof(int)) Argument {
 };
 
 
+create_specialization_concept(Argument, Argument);
+
 template<fixed_string Name>
 constexpr auto operator""_a() { return Argument<Name, empty>{}; };
 
@@ -146,7 +142,7 @@ namespace impl{
 template<typename MultiStruct, typename Default, auto Key, template <auto, typename> typename Arg>
 using find_sliced_type = decltype(impl::find_sliced_type<Default, Key, Arg>(static_cast<MultiStruct*>(nullptr)));
 
-template <typename... Arguments>
+template <specialization_Argument... Arguments> 
 struct SQLStruct : public Arguments... {
     template<std::size_t... Ns>
     static constexpr decltype(auto) get_type_for_ind(std::index_sequence<Ns...>){
@@ -155,17 +151,19 @@ struct SQLStruct : public Arguments... {
     }
 
     constexpr explicit(true) SQLStruct(Arguments... arguments): Arguments{arguments}...
-    {static_assert((is_specialization_of(Argument)<Arguments> && ...));};
+    {};
 
     //this is just amazing we are passing non template parameters and the deduction rules 
     //just know how to complete them!!!!
     template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, Argument>>
-    constexpr const auto& operator[](const T) const requires (!std::is_same_v<empty, ARG>) {
+    requires (!std::same_as<empty, ARG>)
+    constexpr const auto& operator[](const T) const {
         return static_cast<const ARG*>(this)->_val;
     }
 
     template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, Argument>>
-    constexpr auto& operator[](const T) requires (!std::is_same_v<empty, ARG>){
+    requires (!std::same_as<empty, ARG>)
+    constexpr auto& operator[](const T) {
         return static_cast<ARG*>(this)->_val;
     }
 
@@ -186,9 +184,9 @@ struct SQLStruct : public Arguments... {
     static constexpr std::size_t size = sizeof...(Arguments);
 };
 
-
 template <typename... Arguments>
 SQLStruct(Arguments...) -> SQLStruct<Arguments...>; 
+
 
 namespace std{
 
@@ -216,11 +214,7 @@ namespace std{
     } 
 }
 
-
 int main(){
-    static_assert(is_specialization_of(std::array)<std::array<int, 4>>);
-    static_assert(is_specialization_of(std::tuple)<std::tuple<int, double, char>>);
-    static_assert(is_specialization_of(Argument)<Argument<10, int>>);
     constexpr auto fs = "Itai"_fs;
     static_assert(fs == "Itai"sv);
     static_assert("Ari"sv == "Ari"_a);
