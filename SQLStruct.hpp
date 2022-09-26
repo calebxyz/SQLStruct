@@ -42,7 +42,7 @@ struct fixed_string {
     }
 
     //constexpr algorithm ro turn numbers to strings 
-    template <typename Integral> requires (std::is_integral_v<Integral>) 
+    template <std::integral Integral>
     constexpr explicit(false) fixed_string(Integral i){
         auto num{i};
         auto count{0};  
