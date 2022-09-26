@@ -25,12 +25,14 @@ concept specialization_of_types_only = requires (Specialization s) {
 };
 
 
+//evil and ugly code , maybe i will find a better solution in the future 
 #define create_specialization_concept(Name, Basetype)                          \
 template <typename Specialization>                                             \
 concept specialization_##Name = requires (Specialization s){                   \
     []()-> decltype(Basetype(s)) {}.operator()();                              \
 }
 
+#define create_specialization_type_name(Basetype) create_specialization_concept(Basetype, Basetype)
 
 template <std::size_t Size>
 struct fixed_string {
