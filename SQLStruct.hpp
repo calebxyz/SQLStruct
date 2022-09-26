@@ -42,7 +42,7 @@ struct fixed_string {
     }
 
     //constexpr algorithm ro turn numbers to strings 
-    template <std::integral Integral>
+    template <std::integral Integral> 
     constexpr explicit(false) fixed_string(Integral i){
         auto num{i};
         auto count{0};  
@@ -125,7 +125,7 @@ template<std::integral_constant idx>
     constexpr auto operator""_ia() { return Argument<idx, Argument<""_fs, empty>>{}; };
 
 template<typename... T>
-struct mult_inherit_composition : public T...{}; 
+struct schema : public T...{}; 
 
 namespace impl{
     //if we cant get the type use this function to return the default type 
@@ -146,7 +146,7 @@ template <specialization_Argument... Arguments>
 struct SQLStruct : public Arguments... {
     template<std::size_t... Ns>
     static constexpr decltype(auto) get_type_for_ind(std::index_sequence<Ns...>){
-        return mult_inherit_composition<
+        return schema<
         Argument<static_cast<std::size_t>(Ns), Arguments>...>{};
     }
 
