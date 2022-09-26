@@ -17,7 +17,7 @@
 
 using namespace std::literals;
 
-struct void_t{};
+struct empty{};
 
 namespace impl{
 template <auto check_lambda>
@@ -120,13 +120,13 @@ struct alignas(alignof(int)) Argument {
 
 
 template<fixed_string Name>
-constexpr auto operator""_a() { return Argument<Name, void_t>{}; };
+constexpr auto operator""_a() { return Argument<Name, empty>{}; };
 
 template<fixed_string Name>
 constexpr auto operator""_fs() { return Name; };
 
 template<std::integral_constant idx>
-    constexpr auto operator""_ia() { return Argument<idx, Argument<""_fs, void_t>>{}; };
+    constexpr auto operator""_ia() { return Argument<idx, Argument<""_fs, empty>>{}; };
 
 template<typename... T>
 struct mult_inherit_composition : public T...{}; 
@@ -159,27 +159,27 @@ struct SQLStruct : public Arguments... {
 
     //this is just amazing we are passing non template parameters and the deduction rules 
     //just know how to complete them!!!!
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, void_t, T::_key, Argument>>
-    constexpr const auto& operator[](const T) const requires (!std::is_same_v<void_t, ARG>) {
+    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, Argument>>
+    constexpr const auto& operator[](const T) const requires (!std::is_same_v<empty, ARG>) {
         return static_cast<const ARG*>(this)->_val;
     }
 
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, void_t, T::_key, Argument>>
-    constexpr auto& operator[](const T) requires (!std::is_same_v<void_t, ARG>){
+    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, Argument>>
+    constexpr auto& operator[](const T) requires (!std::is_same_v<empty, ARG>){
         return static_cast<ARG*>(this)->_val;
     }
 
     template <std::size_t N, 
     typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}))>,
-    typename Arg = find_sliced_type<ArgMap, void_t, N, Argument>>
-    auto& get() requires (!std::same_as<void_t, Arg>) {
+    typename Arg = find_sliced_type<ArgMap, empty, N, Argument>>
+    auto& get() requires (!std::same_as<empty, Arg>) {
         return *static_cast<typename Arg::ArgType*>(this);
     }
 
     template <std::size_t N, 
     typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}))>,
-    typename Arg = find_sliced_type<ArgMap, void_t, N, Argument>>
-    const auto& get() const requires (!std::same_as<void_t, Arg>) {
+    typename Arg = find_sliced_type<ArgMap, empty, N, Argument>>
+    const auto& get() const requires (!std::same_as<empty, Arg>) {
         return *static_cast<typename Arg::ArgType*>(this);
     }
 
@@ -201,8 +201,8 @@ namespace std{
     struct tuple_element<IDX, SQLStruct<Arguments...>>{
         using SQL = SQLStruct<Arguments...>;
         using ArgMap = decltype(SQL::get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}));
-        using type = typename find_sliced_type<ArgMap, void_t<>, IDX, Argument>::ArgType;
-        static_assert(!is_same_v<type, void_t<>>);
+        using type = typename find_sliced_type<ArgMap, ::empty, IDX, Argument>::ArgType;
+        static_assert(!is_same_v<type, ::empty>);
     };
 
     template <size_t IDX, typename SQLStruct>
