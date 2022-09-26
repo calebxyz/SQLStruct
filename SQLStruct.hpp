@@ -86,7 +86,7 @@ fixed_string(T) -> fixed_string<254>;
 
 
 template<auto Key, typename Val>
-struct alignas(alignof(int)) Argument {
+struct alignas(alignof(int)) schema_field {
     using ArgType = Val;
     static constexpr auto _key = Key; 
     Val _val{};
@@ -94,7 +94,7 @@ struct alignas(alignof(int)) Argument {
 
     template<typename T>
     constexpr auto operator=(const T& val) const {
-        return Argument<Key, T>{._val = val};
+        return schema_field<Key, T>{._val = val};
     }
 
     constexpr explicit(false) operator std::string_view() const {
@@ -115,19 +115,19 @@ struct alignas(alignof(int)) Argument {
 };
 
 
-create_specialization_concept(Argument, Argument);
+create_specialization_type_name(schema_field);
 
 template<fixed_string Name>
-constexpr auto operator""_a() { return Argument<Name, empty>{}; };
+constexpr auto operator""_a() { return schema_field<Name, empty>{}; };
 
 template<fixed_string Name>
 constexpr auto operator""_fs() { return Name; };
 
 template<std::integral_constant idx>
-    constexpr auto operator""_ia() { return Argument<idx, Argument<""_fs, empty>>{}; };
+    constexpr auto operator""_ia() { return schema_field<idx, schema_field<""_fs, empty>>{}; };
 
-template<typename... T>
-struct schema : public T...{}; 
+template<specialization_schema_field... schema_fields> 
+struct schema : public schema_fields...{}; 
 
 namespace impl{
     //if we cant get the type use this function to return the default type 
@@ -144,46 +144,46 @@ namespace impl{
 template<typename MultiStruct, typename Default, auto Key, template <auto, typename> typename Arg>
 using find_sliced_type = decltype(impl::find_sliced_type<Default, Key, Arg>(static_cast<MultiStruct*>(nullptr)));
 
-template <specialization_Argument... Arguments> 
-struct SQLStruct : public Arguments... {
+template <specialization_schema_field... schema_fields> 
+struct SQLStruct : public schema_fields... {
     template<std::size_t... Ns>
     static constexpr decltype(auto) get_type_for_ind(std::index_sequence<Ns...>){
         return schema<
-        Argument<static_cast<std::size_t>(Ns), Arguments>...>{};
+        schema_field<static_cast<std::size_t>(Ns), schema_fields>...>{};
     }
 
-    constexpr explicit(true) SQLStruct(Arguments... arguments): Arguments{arguments}...
+    constexpr explicit(true) SQLStruct(schema_fields... fields): schema_fields{fields}...
     {};
 
     //this is just amazing we are passing non template parameters and the deduction rules 
     //just know how to complete them!!!!
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, Argument>>
+    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, schema_field>>
     requires (!std::same_as<empty, ARG>)
     constexpr const auto& operator[](const T) const {
         return static_cast<const ARG*>(this)->_val;
     }
 
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, Argument>>
+    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, schema_field>>
     requires (!std::same_as<empty, ARG>)
     constexpr auto& operator[](const T) {
         return static_cast<ARG*>(this)->_val;
     }
 
     template <std::size_t N, 
-    typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}))>,
-    typename Arg = find_sliced_type<ArgMap, empty, N, Argument>>
+    typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(schema_fields)>{}))>,
+    typename Arg = find_sliced_type<ArgMap, empty, N, schema_field>>
     auto& get() requires (!std::same_as<empty, Arg>) {
         return *static_cast<typename Arg::ArgType*>(this);
     }
 
     template <std::size_t N, 
-    typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}))>,
-    typename Arg = find_sliced_type<ArgMap, empty, N, Argument>>
+    typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(schema_fields)>{}))>,
+    typename Arg = find_sliced_type<ArgMap, empty, N, schema_field>>
     const auto& get() const requires (!std::same_as<empty, Arg>) {
         return *static_cast<typename Arg::ArgType*>(this);
     }
 
-    static constexpr std::size_t size = sizeof...(Arguments);
+    static constexpr std::size_t size = sizeof...(schema_fields);
 };
 
 template <typename... Arguments>
@@ -201,7 +201,7 @@ namespace std{
     struct tuple_element<IDX, SQLStruct<Arguments...>>{
         using SQL = SQLStruct<Arguments...>;
         using ArgMap = decltype(SQL::get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}));
-        using type = typename find_sliced_type<ArgMap, ::empty, IDX, Argument>::ArgType;
+        using type = typename find_sliced_type<ArgMap, ::empty, IDX, schema_field>::ArgType;
         static_assert(!is_same_v<type, ::empty>);
     };
 
