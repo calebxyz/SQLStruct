@@ -12,6 +12,8 @@
 #include <any>
 #include <charconv>
 #include <utility>
+#include <array>
+#include <concepts>
 
 using namespace std::literals;
 
@@ -134,10 +136,11 @@ namespace impl{
     template<typename Default, auto Key, template <auto, typename> typename>
     auto find_sliced_type(...) -> Default;
 
-    //if we can deduce the argument tyype then this function will return the correct argument type that was inhereted from 
+    //if we can deduce the argument type then this function will return the correct argument type that was inhereted from 
     // this works due to the fact that sqlstruct inherits all arguments 
     template<typename, auto Key, template <auto, typename> typename Arg, typename Val>
-    auto find_sliced_type(Arg<Key, Val>*) -> Arg<Key, Val> requires (std::is_integral_v<decltype(Key)> || std::is_convertible_v<decltype(Key), std::string_view>);  
+    requires (std::integral<decltype(Key)> || std::convertible_to<decltype(Key), std::string_view>)
+    auto find_sliced_type(Arg<Key, Val>*) -> Arg<Key, Val>;  
 }
 
 template<typename MultiStruct, typename Default, auto Key, template <auto, typename> typename Arg>
@@ -167,16 +170,16 @@ struct SQLStruct : public Arguments... {
     }
 
     template <std::size_t N, 
-    auto ArgMap = get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}), 
-    typename Arg = find_sliced_type<decltype(ArgMap), void_t, N, Argument>>
-    auto& get() requires (!std::is_same_v<void_t, Arg>) {
+    typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}))>,
+    typename Arg = find_sliced_type<ArgMap, void_t, N, Argument>>
+    auto& get() requires (!std::same_as<void_t, Arg>) {
         return *static_cast<typename Arg::ArgType*>(this);
     }
 
     template <std::size_t N, 
-    auto ArgMap = get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}), 
-    typename Arg = find_sliced_type<decltype(ArgMap), void_t, N, Argument>>
-    const auto& get() const requires (!std::is_same_v<void_t, Arg>) {
+    typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}))>,
+    typename Arg = find_sliced_type<ArgMap, void_t, N, Argument>>
+    const auto& get() const requires (!std::same_as<void_t, Arg>) {
         return *static_cast<typename Arg::ArgType*>(this);
     }
 
