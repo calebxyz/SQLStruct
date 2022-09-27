@@ -34,6 +34,19 @@ concept specialization_##Name = requires (Specialization s){                   \
 
 #define create_specialization_type_name(Basetype) create_specialization_concept(Basetype, Basetype)
 
+
+template <std::integral Integral>
+    static constexpr std::size_t get_integral_size(Integral i){
+        std::size_t count{0};
+        Integral num = i;
+        while (num > 0) {
+            count++;
+            num /= 10;
+        }
+
+        return count; 
+    }
+
 template <std::size_t Size>
 struct fixed_string {
     char _data[Size + 1]{0};
@@ -43,24 +56,12 @@ struct fixed_string {
         std::copy_n(str, Size + 1, _data);
     }
 
-    //constexpr algorithm ro turn numbers to strings 
     template <std::integral Integral> 
     constexpr explicit(false) fixed_string(Integral i){
-        auto num{i};
-        auto count{0};  
-        while (num > 0) {
-            count++;
-            num /= 10;
-        }
+        number_to_string(i, get_integral_size(i));
+    }
 
-        num = i; 
-
-        while (count > 0){
-            count--;
-            char c = '0' + num % 10; 
-            _data[count] = c; 
-            num /= 10;
-        }
+    constexpr explicit(false) fixed_string() {
     }
 
     constexpr explicit(false) operator std::string_view() const {
@@ -76,13 +77,32 @@ struct fixed_string {
     }
 
     constexpr auto operator<=>(const fixed_string&) const = default;
+
+    private: 
+    
+    //constexpr algorithm ro turn numbers to strings 
+    // in c++23 we will be able to use to_chars
+    template <std::integral Integral>
+    constexpr void number_to_string(Integral i, std::size_t count){
+        Integral num = i; 
+
+        while (count > 0){
+            count--;
+            char c = '0' + num % 10; 
+            _data[count] = c; 
+            num /= 10;
+        }
+    }
 };
+
+//helper for empty fixed_string
+fixed_string() -> fixed_string<0>;
 
 template <unsigned int Size> 
 fixed_string(char const (&)[Size]) -> fixed_string<Size - 1>;
 
 template <std::integral Integral> 
-fixed_string(Integral) -> fixed_string<254>;
+fixed_string(Integral) -> fixed_string<255>;
 
 
 template<auto Key, typename Val>
