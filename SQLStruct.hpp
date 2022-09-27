@@ -14,6 +14,7 @@
 #include <utility>
 #include <array>
 #include <concepts>
+#include <string>
 
 using namespace std::literals;
 
@@ -34,6 +35,18 @@ concept specialization_##Name = requires (Specialization s){                   \
 
 #define create_specialization_type_name(Basetype) create_specialization_concept(Basetype, Basetype)
 
+
+template <auto i> requires std::integral<std::decay_t<decltype(i)>>
+struct integral_constant{
+    template <std::integral Integral>
+    integral_constant(Integral integral) {};
+    static constexpr auto value = i; 
+    using type = std::decay_t<decltype(i)>;
+};
+
+
+template <std::integral Integral>
+integral_constant(Integral i) -> integral_constant<i>;
 
 template <std::integral Integral>
     static constexpr std::size_t get_integral_size(Integral i){
@@ -143,7 +156,7 @@ struct alignas(alignof(int)) schema_field {
     (not std::integral<Pure_Key_Type>) and (not specialization_fixed_string<Pure_Key_Type>){
         return fixed_string<Key.size()>(Key.data());
     }
-    
+
     static constexpr auto _strKey = get_str_key();
     static constexpr std::size_t _size = _strKey.size();
 };
@@ -151,14 +164,31 @@ struct alignas(alignof(int)) schema_field {
 
 create_specialization_type_name(schema_field);
 
+//again only in c++23 we will be able to use from_chars as a constexpr 
+template<char... data>
+constexpr std::size_t to_number(){ 
+    constexpr auto arr = std::array<char, sizeof...(data)> {{ data... }};
+    std::size_t num = arr[0] - '0';
+    for (std::size_t i=1; i<arr.size(); i++){
+        num = num*10; 
+        num += arr[i] - '0';
+    }
+
+    return num;
+}
+
 template<fixed_string Name>
 constexpr auto operator""_a() { return schema_field<Name, empty>{}; };
 
 template<fixed_string Name>
 constexpr auto operator""_fs() { return Name; };
 
-template<std::integral_constant idx>
-    constexpr auto operator""_ia() { return schema_field<idx, schema_field<""_fs, empty>>{}; };
+template<char... data> 
+constexpr std::size_t operator""_isf(){
+    constexpr std::size_t idx = to_number<data...>();
+    return schema_field<idx, schema_field<""_fs, empty>>{};
+}
+
 
 template<specialization_schema_field... schema_fields> 
 struct schema : public schema_fields...{}; 
