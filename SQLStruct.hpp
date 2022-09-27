@@ -167,7 +167,7 @@ create_specialization_type_name(schema_field);
 //again only in c++23 we will be able to use from_chars as a constexpr 
 template<char... data>
 constexpr std::size_t to_number(){ 
-    constexpr auto arr = std::array<char, sizeof...(data)> {{ data... }};
+    constexpr auto arr = std::to_array({data...});
     std::size_t num = arr[0] - '0';
     for (std::size_t i=1; i<arr.size(); i++){
         num = num*10; 
@@ -184,7 +184,7 @@ template<fixed_string Name>
 constexpr auto operator""_fs() { return Name; };
 
 template<char... data> 
-constexpr std::size_t operator""_isf(){
+constexpr auto operator""_isf(){
     constexpr std::size_t idx = to_number<data...>();
     return schema_field<idx, schema_field<""_fs, empty>>{};
 }
@@ -282,6 +282,8 @@ namespace std{
 
 
 int main(){
+    constexpr auto key = (150_isf)._key;
+    std::cout << key << "\n";
     constexpr auto fs = "Itai"_fs;
     static_assert(fs == "Itai"sv);
     static_assert("Ari"sv == "Ari"_a);
