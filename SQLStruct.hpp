@@ -95,6 +95,9 @@ struct fixed_string {
     }
 };
 
+create_specialization_type_name(fixed_string);
+
+
 //helper for empty fixed_string
 fixed_string() -> fixed_string<0>;
 
@@ -109,11 +112,11 @@ constexpr auto make_integral_fixed_string() {
     return fixed_string<get_integral_size(i)>(i);
 }
 
-
 template<auto Key, typename Val>
 struct alignas(alignof(int)) schema_field {
     using ArgType = Val;
-    static constexpr auto _key = Key; 
+    static constexpr auto _key = Key;
+    using Pure_Key_Type = std::decay_t<decltype(Key)>; 
     Val _val{};
      
 
@@ -127,13 +130,19 @@ struct alignas(alignof(int)) schema_field {
     }
 
     private:
-    static constexpr auto get_str_key(){
-        if constexpr (std::is_convertible_v<decltype(Key), std::string_view>){
-            return fixed_string<Key.size()>(Key.data());
-        }
+    static constexpr auto get_str_key() requires specialization_fixed_string<Pure_Key_Type> and 
+    (not std::integral<Pure_Key_Type>){
+        return Key;
+    }
 
-        return fixed_string(Key);
-    } 
+    static constexpr auto get_str_key() requires std::integral<Pure_Key_Type>{
+        return make_integral_fixed_string<Key>();
+    }
+
+    static constexpr auto get_str_key() requires std::convertible_to<Pure_Key_Type, std::string_view> and 
+    (not std::integral<Pure_Key_Type>) and (not specialization_fixed_string<Pure_Key_Type>){
+        return fixed_string<Key.size()>(Key.data());
+    }
     
     static constexpr auto _strKey = get_str_key();
     static constexpr std::size_t _size = _strKey.size();
@@ -239,7 +248,8 @@ namespace std{
     const auto& get(const SQLStruct& sql){
         return sql.template get<IDX>();
     } 
-}
+} 
+
 
 int main(){
     constexpr auto fs = "Itai"_fs;
