@@ -81,8 +81,8 @@ struct fixed_string {
 template <unsigned int Size> 
 fixed_string(char const (&)[Size]) -> fixed_string<Size - 1>;
 
-template <typename T> 
-fixed_string(T) -> fixed_string<254>;
+template <std::integral Integral> 
+fixed_string(Integral) -> fixed_string<254>;
 
 
 template<auto Key, typename Val>
