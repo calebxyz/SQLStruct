@@ -112,14 +112,14 @@ constexpr auto make_integral_fixed_string() {
 template<auto Key, typename Val>
 struct alignas(alignof(int)) schema_field {
     using ArgType = Val;
-    static constexpr auto _key = Key;
+    static constexpr auto key_ = Key;
     using Pure_Key_Type = std::decay_t<decltype(Key)>; 
-    Val _val{};
+    Val val_{};
      
 
     template<typename T>
     constexpr auto operator=(const T& val) const {
-        return schema_field<Key, T>{._val = val};
+        return schema_field<Key, T>{.val_ = val};
     }
 
     constexpr explicit(false) operator std::string_view() const {
@@ -212,16 +212,16 @@ struct SQLStruct : public schema_fields... {
 
     //this is just amazing we are passing non template parameters and the deduction rules 
     //just know how to complete them!!!!
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, schema_field>>
+    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::key_, schema_field>>
     requires (!std::same_as<empty, ARG>)
     constexpr const auto& operator[](const T) const {
-        return static_cast<const ARG*>(this)->_val;
+        return static_cast<const ARG*>(this)->val_;
     }
 
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::_key, schema_field>>
+    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::key_, schema_field>>
     requires (!std::same_as<empty, ARG>)
     constexpr auto& operator[](const T) {
-        return static_cast<ARG*>(this)->_val;
+        return static_cast<ARG*>(this)->val_;
     }
 
     template <std::size_t N, 
@@ -273,7 +273,7 @@ namespace std{
 
 
 int main(){
-    constexpr auto key = (158_isf)._key;
+    constexpr auto key = (158_isf).key_;
     std::cout << key << "\n";
     constexpr auto fs = "Itai"_fs;
     static_assert(fs == "Itai"sv);
@@ -287,5 +287,5 @@ int main(){
     sql2["Itay"_sf][2] = 5; 
     auto arg3 = std::get<0>(sql2);
     auto& [a1, a2, a3] = sql2;
-    return arg3._val + a1._val;
+    return arg3.val_ + a1.val_;
 }
