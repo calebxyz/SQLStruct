@@ -104,9 +104,6 @@ fixed_string() -> fixed_string<0>;
 template <unsigned int Size> 
 fixed_string(char const (&)[Size]) -> fixed_string<Size - 1>;
 
-template <std::integral Integral> 
-fixed_string(Integral) -> fixed_string<255>;
-
 template <auto i> requires std::integral<decltype(i)>
 constexpr auto make_integral_fixed_string() {
     return fixed_string<get_integral_size(i)>(i);
