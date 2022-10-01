@@ -22,7 +22,7 @@ struct empty{};
 
 template <typename Specialization, template <typename...> typename Basetype>
 concept specialization_of_types_only = requires (Specialization s) { 
-    []()-> decltype(Basetype(s)) {}.operator()();
+    []()-> decltype(Basetype(s))* {return nullptr;}.operator()();
 };
 
 
@@ -30,35 +30,23 @@ concept specialization_of_types_only = requires (Specialization s) {
 #define create_specialization_concept(Name, Basetype)                          \
 template <typename Specialization>                                             \
 concept specialization_##Name = requires (Specialization s){                   \
-    []()-> decltype(Basetype(s)) {}.operator()();                              \
+    []()-> decltype(Basetype(s))* {return nullptr;}.operator()();                              \
 }
 
 #define create_specialization_type_name(Basetype) create_specialization_concept(Basetype, Basetype)
 
 
-template <auto i> requires std::integral<std::decay_t<decltype(i)>>
-struct integral_constant{
-    template <std::integral Integral>
-    integral_constant(Integral integral) {};
-    static constexpr auto value = i; 
-    using type = std::decay_t<decltype(i)>;
-};
 
-
-template <std::integral Integral>
-integral_constant(Integral i) -> integral_constant<i>;
-
-template <std::integral Integral>
-    static constexpr std::size_t get_integral_size(Integral i){
-        std::size_t count{0};
-        Integral num = i;
-        while (num > 0) {
-            count++;
-            num /= 10;
-        }
-
-        return count; 
+static constexpr std::size_t get_integral_size(std::integral auto i){
+    std::size_t count{0};
+    auto num = i;
+    while (num > 0) {
+        count++;
+        num /= 10;
     }
+
+    return count; 
+}
 
 template <std::size_t Size>
 struct fixed_string {
@@ -93,19 +81,18 @@ struct fixed_string {
 
     private: 
     
-    //constexpr algorithm ro turn numbers to strings 
-    // in c++23 we will be able to use to_chars
-    template <std::integral Integral>
-    constexpr void number_to_string(Integral i, std::size_t count){
-        Integral num = i; 
+//constexpr algorithm ro turn numbers to strings 
+// in c++23 we will be able to use to_chars
+constexpr void number_to_string(std::integral auto i, std::size_t count){
+    auto num = i; 
 
-        while (count > 0){
-            count--;
-            char c = '0' + num % 10; 
-            _data[count] = c; 
-            num /= 10;
-        }
+    while (count > 0){
+        count--;
+        char c = '0' + num % 10; 
+        _data[count] = c; 
+        num /= 10;
     }
+}
 };
 
 create_specialization_type_name(fixed_string);
@@ -167,7 +154,7 @@ create_specialization_type_name(schema_field);
 template <auto base = 10ul> requires std::integral<decltype(base)>
 constexpr std::size_t integral_pow(std::integral auto exp){
     auto ret{base};
-    for (decltype(base) i = 1; i < exp; i++){
+    for (decltype(base) i = 1; i < static_cast<decltype(base)>(exp); i++){
         ret*=base;
     }
 
@@ -288,7 +275,7 @@ namespace std{
 
 
 int main(){
-    constexpr auto key = (150_isf)._key;
+    constexpr auto key = (158_isf)._key;
     std::cout << key << "\n";
     constexpr auto fs = "Itai"_fs;
     static_assert(fs == "Itai"sv);
