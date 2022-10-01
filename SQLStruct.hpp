@@ -148,6 +148,7 @@ struct alignas(alignof(int)) schema_field {
 
 create_specialization_type_name(schema_field);
 
+//there is a bug in clang that prevents me from using the ntp directly 
 template <auto base = 10ul> requires std::integral<decltype(base)>
 constexpr std::size_t integral_pow(std::integral auto exp){
     auto ret{base};
@@ -168,7 +169,7 @@ constexpr std::size_t to_number(){
 }
 
 template<fixed_string Name>
-constexpr auto operator""_a() { return schema_field<Name, empty>{}; };
+constexpr auto operator""_sf() { return schema_field<Name, empty>{}; };
 
 template<fixed_string Name>
 constexpr auto operator""_fs() { return Name; };
@@ -276,14 +277,14 @@ int main(){
     std::cout << key << "\n";
     constexpr auto fs = "Itai"_fs;
     static_assert(fs == "Itai"sv);
-    static_assert("Ari"sv == "Ari"_a);
-    auto arg1 = ("Ari"_a = 10);
-    constexpr auto sql1 = SQLStruct("x"_a = 10, "y"_a = 20.05f);
-    static_assert(10 == sql1["x"_a]);
-    auto sql2 = SQLStruct("x"_a = 10, "y"_a = 20.05f, "Itay"_a = std::array<int, 3>{{1, 2, 3}});
-    sql2["x"_a] = 11;
-    sql2["y"_a] = 20.11f;
-    sql2["Itay"_a][2] = 5; 
+    static_assert("Ari"sv == "Ari"_sf);
+    auto arg1 = ("Ari"_sf = 10);
+    constexpr auto sql1 = SQLStruct("x"_sf = 10, "y"_sf = 20.05f);
+    static_assert(10 == sql1["x"_sf]);
+    auto sql2 = SQLStruct("x"_sf = 10, "y"_sf = 20.05f, "Itay"_sf = std::array<int, 3>{{1, 2, 3}});
+    sql2["x"_sf] = 11;
+    sql2["y"_sf] = 20.11f;
+    sql2["Itay"_sf][2] = 5; 
     auto arg3 = std::get<0>(sql2);
     auto& [a1, a2, a3] = sql2;
     return arg3._val + a1._val;
