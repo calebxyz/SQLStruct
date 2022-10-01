@@ -164,17 +164,23 @@ struct alignas(alignof(int)) schema_field {
 
 create_specialization_type_name(schema_field);
 
+template <auto base = 10ul> requires std::integral<decltype(base)>
+constexpr std::size_t integral_pow(std::integral auto exp){
+    auto ret{base};
+    for (decltype(base) i = 1; i < exp; i++){
+        ret*=base;
+    }
+
+    return exp > 0 ? ret : 1;
+}
+
 //again only in c++23 we will be able to use from_chars as a constexpr 
 template<char... data>
 constexpr std::size_t to_number(){ 
-    constexpr auto arr = std::to_array({data...});
-    std::size_t num = arr[0] - '0';
-    for (std::size_t i=1; i<arr.size(); i++){
-        num = num*10; 
-        num += arr[i] - '0';
-    }
-
-    return num;
+    constexpr auto size_of_pack = sizeof...(data)-1;
+    return []<std::size_t... Idxs>(std::index_sequence<Idxs...>){
+        return (... + ((data-'0')*integral_pow(size_of_pack-Idxs)));
+    }(std::make_index_sequence<sizeof...(data)>());
 }
 
 template<fixed_string Name>
