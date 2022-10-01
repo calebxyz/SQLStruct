@@ -200,25 +200,25 @@ template<typename MultiStruct, typename Default, auto Key, template <auto, typen
 using find_sliced_type = decltype(impl::find_sliced_type<Default, Key, Arg>(static_cast<MultiStruct*>(nullptr)));
 
 template <specialization_schema_field... schema_fields> 
-struct SQLStruct : public schema_fields... {
+struct SQLRow : public schema_fields... {
     template<std::size_t... Ns>
     static constexpr decltype(auto) get_type_for_ind(std::index_sequence<Ns...>){
         return schema<
         schema_field<static_cast<std::size_t>(Ns), schema_fields>...>{};
     }
 
-    constexpr explicit(true) SQLStruct(schema_fields... fields): schema_fields{fields}...
+    constexpr explicit(true) SQLRow(schema_fields... fields): schema_fields{fields}...
     {};
 
     //this is just amazing we are passing non template parameters and the deduction rules 
     //just know how to complete them!!!!
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::key_, schema_field>>
+    template <typename T, typename ARG = find_sliced_type<SQLRow, empty, T::key_, schema_field>>
     requires (!std::same_as<empty, ARG>)
     constexpr const auto& operator[](const T) const {
         return static_cast<const ARG*>(this)->val_;
     }
 
-    template <typename T, typename ARG = find_sliced_type<SQLStruct, empty, T::key_, schema_field>>
+    template <typename T, typename ARG = find_sliced_type<SQLRow, empty, T::key_, schema_field>>
     requires (!std::same_as<empty, ARG>)
     constexpr auto& operator[](const T) {
         return static_cast<ARG*>(this)->val_;
@@ -242,31 +242,31 @@ struct SQLStruct : public schema_fields... {
 };
 
 template <typename... Arguments>
-SQLStruct(Arguments...) -> SQLStruct<Arguments...>; 
+SQLRow(Arguments...) -> SQLRow<Arguments...>; 
 
 
 namespace std{
 
     template<typename... Args>
-    struct tuple_size<SQLStruct<Args...>>{
-        static constexpr size_t value = SQLStruct<Args...>::size;
+    struct tuple_size<SQLRow<Args...>>{
+        static constexpr size_t value = SQLRow<Args...>::size;
     };
 
     template <size_t IDX, typename... Arguments>
-    struct tuple_element<IDX, SQLStruct<Arguments...>>{
-        using SQL = SQLStruct<Arguments...>;
+    struct tuple_element<IDX, SQLRow<Arguments...>>{
+        using SQL = SQLRow<Arguments...>;
         using ArgMap = decltype(SQL::get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}));
         using type = typename find_sliced_type<ArgMap, ::empty, IDX, schema_field>::ArgType;
         static_assert(!is_same_v<type, ::empty>);
     };
 
-    template <size_t IDX, typename SQLStruct>
-    auto& get(SQLStruct& sql){
+    template <size_t IDX, typename SQLRow>
+    auto& get(SQLRow& sql){
         return sql.template get<IDX>();
     } 
 
-    template <size_t IDX, typename SQLStruct>
-    const auto& get(const SQLStruct& sql){
+    template <size_t IDX, typename SQLRow>
+    const auto& get(const SQLRow& sql){
         return sql.template get<IDX>();
     } 
 } 
@@ -279,9 +279,9 @@ int main(){
     static_assert(fs == "Itai"sv);
     static_assert("Ari"sv == "Ari"_sf);
     auto arg1 = ("Ari"_sf = 10);
-    constexpr auto sql1 = SQLStruct("x"_sf = 10, "y"_sf = 20.05f);
+    constexpr auto sql1 = SQLRow("x"_sf = 10, "y"_sf = 20.05f);
     static_assert(10 == sql1["x"_sf]);
-    auto sql2 = SQLStruct("x"_sf = 10, "y"_sf = 20.05f, "Itay"_sf = std::array<int, 3>{{1, 2, 3}});
+    auto sql2 = SQLRow("x"_sf = 10, "y"_sf = 20.05f, "Itay"_sf = std::array<int, 3>{{1, 2, 3}});
     sql2["x"_sf] = 11;
     sql2["y"_sf] = 20.11f;
     sql2["Itay"_sf][2] = 5; 
