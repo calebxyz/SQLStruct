@@ -148,9 +148,7 @@ struct alignas(alignof(int)) schema_field {
 
 create_specialization_type_name(schema_field);
 
-//there is a bug in clang that prevents me from using the ntp directly 
-template <auto base = 10ul> requires std::integral<decltype(base)>
-constexpr std::size_t integral_pow(std::integral auto exp){
+constexpr std::size_t integral_pow(std::integral auto base, std::integral auto exp){
     auto ret{base};
     for (decltype(base) i = 1; i < static_cast<decltype(base)>(exp); i++){
         ret*=base;
@@ -160,11 +158,13 @@ constexpr std::size_t integral_pow(std::integral auto exp){
 }
 
 //again only in c++23 we will be able to use from_chars as a constexpr 
-template<char... data>
+//this funcion will produce an error if a number of size greater then std::numeric_limits<std::size_t>::max() will be used 
+template<char... data> 
+requires (sizeof...(data) < get_integral_size(std::numeric_limits<std::size_t>::max()))
 constexpr std::size_t to_number(){ 
     constexpr auto size_of_pack = sizeof...(data)-1;
     return []<std::size_t... Idxs>(std::index_sequence<Idxs...>){
-        return (... + ((data-'0')*integral_pow(size_of_pack-Idxs)));
+        return (... + ((data-'0')*integral_pow(10, size_of_pack-Idxs)));
     }(std::make_index_sequence<sizeof...(data)>());
 }
 
