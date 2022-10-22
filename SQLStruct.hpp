@@ -248,12 +248,12 @@ struct SQLRow : public schema_fields... {
 
     template <IDXWrapperable T>
     constexpr const auto& operator[](const T) const {
-        return get<T::IDX>();
+        return get<T::IDX>().val_;
     }
 
     template <IDXWrapperable T>
     constexpr auto& operator[](const T) {
-        return get<T::IDX>();
+        return get<T::IDX>().val_;
     }
 
     template <std::size_t N, 
@@ -324,7 +324,6 @@ class SQLTable{
 
 template <specialization_SQLRow Head, specialization_SQLRow... Tail>
 SQLTable(Head, Tail...) -> SQLTable<sizeof...(Tail)+1, Head>;
-
 
 int main(){
     constexpr auto key = (158_isf).key_;
