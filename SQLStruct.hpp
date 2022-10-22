@@ -112,6 +112,15 @@ constexpr auto make_integral_fixed_string() {
     return fixed_string<get_integral_size(i)>(i);
 }
 
+template <std::size_t N>
+struct IDXWrapper{
+    static constexpr std::size_t IDX = N;
+};
+
+
+template <typename T>
+concept IDXWrapperable = requires (T) { T::IDX; }; 
+
 template<auto Key, typename Val>
 struct alignas(alignof(int)) schema_field {
     using ArgType = Val;
@@ -231,6 +240,16 @@ struct SQLRow : public schema_fields... {
         return static_cast<ARG*>(this)->val_;
     }
 
+    template <IDXWrapperable T>
+    constexpr const auto& operator[](const T) const {
+        return get<T::IDX>();
+    }
+
+    template <IDXWrapperable T>
+    constexpr auto& operator[](const T) {
+        return get<T::IDX>();
+    }
+
     template <std::size_t N, 
     typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(schema_fields)>{}))>,
     typename Arg = find_sliced_type<ArgMap, empty, N, schema_field>>
@@ -317,8 +336,7 @@ int main(){
     auto arg3 = std::get<0>(sql2);
     auto& [a1, a2, a3] = sql2;
     auto table = SQLTable(SQLRow("x"_sf = 10, "y"_sf = 20.05f), SQLRow("x"_sf = 1, "y"_sf = 20.15f));
-    auto row = table[1];
-    auto test2 = std::get<0>(row);
     auto test3 = std::get<0>(table[0]);
+    auto test4 = table[0][IDXWrapper<1>()];
     return arg3.val_ + a1.val_;
 }
