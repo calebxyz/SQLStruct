@@ -115,6 +115,7 @@ constexpr auto make_integral_fixed_string() {
 template <std::size_t N>
 struct IDXWrapper{
     static constexpr std::size_t IDX = N;
+
 };
 
 
@@ -190,6 +191,11 @@ template<char... data>
 constexpr auto operator""_isf(){
     constexpr std::size_t idx = to_number<data...>();
     return schema_field<idx, schema_field<""_fs, empty>>{};
+}
+
+template <char... data>
+constexpr auto operator""_IDX(){
+   return IDXWrapper<to_number<data...>()>();
 }
 
 
@@ -337,6 +343,6 @@ int main(){
     auto& [a1, a2, a3] = sql2;
     auto table = SQLTable(SQLRow("x"_sf = 10, "y"_sf = 20.05f), SQLRow("x"_sf = 1, "y"_sf = 20.15f));
     auto test3 = std::get<0>(table[0]);
-    auto test4 = table[0][IDXWrapper<1>()];
+    auto test4 = table[0][1_IDX];
     return arg3.val_ + a1.val_;
 }
