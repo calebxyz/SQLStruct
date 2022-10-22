@@ -1,3 +1,4 @@
+// Type your code here, or load an example.
 #include <memory> 
 #include <vector> 
 #include <type_traits>
@@ -35,6 +36,8 @@ concept specialization_##Name = requires (Specialization s){                   \
 
 #define create_specialization_type_name(Basetype) create_specialization_concept(Basetype, Basetype)
 
+template <typename T>
+concept is_empty = std::same_as<T, empty>;
 
 
 static constexpr std::size_t get_integral_size(std::integral auto i){
@@ -210,6 +213,10 @@ struct SQLRow : public schema_fields... {
     constexpr explicit(true) SQLRow(schema_fields... fields): schema_fields{fields}...
     {};
 
+    //default constructor that allocates nothing
+    //TODO: maybe we need to do something here so that users wont be able to use it 
+    constexpr explicit(true) SQLRow() {};
+
     //this is just amazing we are passing non template parameters and the deduction rules 
     //just know how to complete them!!!!
     template <typename T, typename ARG = find_sliced_type<SQLRow, empty, T::key_, schema_field>>
@@ -235,41 +242,63 @@ struct SQLRow : public schema_fields... {
     typename ArgMap = std::decay_t<decltype(get_type_for_ind(std::make_index_sequence<sizeof...(schema_fields)>{}))>,
     typename Arg = find_sliced_type<ArgMap, empty, N, schema_field>>
     const auto& get() const requires (!std::same_as<empty, Arg>) {
-        return *static_cast<typename Arg::ArgType*>(this);
+        return *static_cast<const typename Arg::ArgType*>(this);
     }
 
     static constexpr std::size_t size = sizeof...(schema_fields);
 };
 
-template <typename... Arguments>
-SQLRow(Arguments...) -> SQLRow<Arguments...>; 
+template <specialization_schema_field... schema_fields>
+SQLRow(schema_fields...) -> SQLRow<schema_fields...>; 
 
+create_specialization_type_name(SQLRow);
 
 namespace std{
 
-    template<typename... Args>
-    struct tuple_size<SQLRow<Args...>>{
-        static constexpr size_t value = SQLRow<Args...>::size;
+    template<specialization_schema_field... schema_fields>
+    struct tuple_size<SQLRow<schema_fields...>>{
+        static constexpr size_t value = SQLRow<schema_fields...>::size;
     };
 
-    template <size_t IDX, typename... Arguments>
-    struct tuple_element<IDX, SQLRow<Arguments...>>{
-        using SQL = SQLRow<Arguments...>;
-        using ArgMap = decltype(SQL::get_type_for_ind(std::make_index_sequence<sizeof...(Arguments)>{}));
+    template <size_t IDX, specialization_schema_field... schema_fields>
+    struct tuple_element<IDX, SQLRow<schema_fields...>>{
+        using SQL = SQLRow<schema_fields...>;
+        using ArgMap = decltype(SQL::get_type_for_ind(std::make_index_sequence<sizeof...(schema_fields)>{}));
         using type = typename find_sliced_type<ArgMap, ::empty, IDX, schema_field>::ArgType;
         static_assert(!is_same_v<type, ::empty>);
     };
 
-    template <size_t IDX, typename SQLRow>
-    auto& get(SQLRow& sql){
+    template <size_t IDX, specialization_SQLRow Row>
+    auto& get(Row& sql){
         return sql.template get<IDX>();
     } 
 
-    template <size_t IDX, typename SQLRow>
-    const auto& get(const SQLRow& sql){
+    template <size_t IDX, specialization_SQLRow Row>
+    const auto& get(const Row& sql){
         return sql.template get<IDX>();
     } 
-} 
+}
+ 
+
+//for now we will hold the rows as an array to get constexpr p
+template <std::size_t N, specialization_SQLRow Row>
+class SQLTable{
+    public: 
+    constexpr SQLTable(specialization_SQLRow auto&&... rows) 
+    requires std::conjunction_v<std::is_same<Row, std::decay_t<decltype(rows)>>...>{
+        rows_ = std::to_array({rows...});
+    }
+
+    auto operator[](std::size_t row_idx){
+        return rows_[row_idx];
+    }
+
+    private: 
+    std::array<Row, N> rows_;
+};
+
+template <specialization_SQLRow Head, specialization_SQLRow... Tail>
+SQLTable(Head, Tail...) -> SQLTable<sizeof...(Tail)+1, Head>;
 
 
 int main(){
@@ -287,5 +316,9 @@ int main(){
     sql2["Itay"_sf][2] = 5; 
     auto arg3 = std::get<0>(sql2);
     auto& [a1, a2, a3] = sql2;
+    auto table = SQLTable(SQLRow("x"_sf = 10, "y"_sf = 20.05f), SQLRow("x"_sf = 1, "y"_sf = 20.15f));
+    auto row = table[1];
+    auto test2 = std::get<0>(row);
+    auto test3 = std::get<0>(table[0]);
     return arg3.val_ + a1.val_;
 }
